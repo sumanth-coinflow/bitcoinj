@@ -1192,7 +1192,7 @@ public class Peer extends PeerSocketHandler {
                     log.debug("{}: getdata on tx {}", getAddress(), item.hash);
                 getdata.addTransaction(item.hash, vPeerVersionMessage.isWitnessSupported());
                 if (pendingTxDownloads.size() > PENDING_TX_DOWNLOADS_LIMIT) {
-                    log.info("{}: Too many pending transactions, disconnecting", this);
+                    log.info("{}: {} Too many pending transactions, disconnecting", this,pendingTxDownloads.size());
                     close();
                     return;
                 }
