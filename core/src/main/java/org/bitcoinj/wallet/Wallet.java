@@ -78,6 +78,7 @@ import java.io.*;
 import java.math.BigInteger;
 import java.math.RoundingMode;
 import java.nio.ByteBuffer;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.*;
@@ -5273,6 +5274,40 @@ public class Wallet extends BaseTaggableObject
             // 2) It can't really hurt.
             log.info("New broadcaster so uploading waiting tx {}", tx.getTxId());
             broadcaster.broadcastTransaction(tx);
+        }
+    }
+
+    public Map<Sha256Hash, Transaction> cleanUpRelevantSpentTxs(int days) {
+        Map<Sha256Hash, Transaction> removed = new HashMap<>();
+        for (Map.Entry<Sha256Hash, Transaction> entry: spent.entrySet()) {
+            Transaction tx = entry.getValue();
+            boolean canBeDeleted = true;
+            for (TransactionOutput output: tx.getOutputs()) {
+                if (output.isAvailableForSpending() && output.isMineOrWatched(this)) {
+                    canBeDeleted = false;
+                    break;
+                }
+            }
+            if (canBeDeleted && tx.getUpdateTime() != null) {
+                long txTime = tx.getUpdateTime().getTime() / 1000;
+                long currentTime = new Date().getTime() / 1000;
+                if (currentTime - txTime < (long) days * 24 * 60 * 60) {
+                    canBeDeleted = false;
+                }
+            }
+            if (canBeDeleted) {
+                transactions.remove(entry.getKey());
+                spent.remove(entry.getKey());
+                removed.put(entry.getKey(), tx);
+            }
+        }
+        return removed;
+    }
+
+    public void addSpentTxs(Map<Sha256Hash, Transaction> txs) {
+        for (Map.Entry<Sha256Hash, Transaction> entry: txs.entrySet()) {
+            spent.put(entry.getKey(), entry.getValue());
+            transactions.put(entry.getKey(), entry.getValue());
         }
     }
 
