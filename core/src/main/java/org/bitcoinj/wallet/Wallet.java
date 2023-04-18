@@ -5296,10 +5296,41 @@ public class Wallet extends BaseTaggableObject
                     if (currentTime - txTime < (long) days * 24 * 60 * 60) {
                         canBeDeleted = false;
                     }
+                } else {
+                    canBeDeleted = false;
                 }
                 if (canBeDeleted) {
                     transactions.remove(entry.getKey());
                     spent.remove(entry.getKey());
+                    removed.put(entry.getKey(), tx);
+                }
+            }
+            return removed;
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    public Map<Sha256Hash, Transaction> cleanUpRelevantDeadTxs(int days) {
+        lock.lock();
+        try {
+            Map<Sha256Hash, Transaction> toCheck = new HashMap<>(dead);
+            Map<Sha256Hash, Transaction> removed = new HashMap<>();
+            for (Map.Entry<Sha256Hash, Transaction> entry : toCheck.entrySet()) {
+                Transaction tx = entry.getValue();
+                boolean canBeDeleted = true;
+                if (tx.getUpdateTime() != null) {
+                    long txTime = tx.getUpdateTime().getTime() / 1000;
+                    long currentTime = new Date().getTime() / 1000;
+                    if (currentTime - txTime < (long) days * 24 * 60 * 60) {
+                        canBeDeleted = false;
+                    }
+                } else {
+                    canBeDeleted = false;
+                }
+                if (canBeDeleted) {
+                    transactions.remove(entry.getKey());
+                    dead.remove(entry.getKey());
                     removed.put(entry.getKey(), tx);
                 }
             }
@@ -5314,6 +5345,18 @@ public class Wallet extends BaseTaggableObject
         try {
             for (Map.Entry<Sha256Hash, Transaction> entry : txs.entrySet()) {
                 spent.put(entry.getKey(), entry.getValue());
+                transactions.put(entry.getKey(), entry.getValue());
+            }
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    public void addDeadTxs(Map<Sha256Hash, Transaction> txs) {
+        lock.lock();
+        try {
+            for (Map.Entry<Sha256Hash, Transaction> entry : txs.entrySet()) {
+                dead.put(entry.getKey(), entry.getValue());
                 transactions.put(entry.getKey(), entry.getValue());
             }
         } finally {
