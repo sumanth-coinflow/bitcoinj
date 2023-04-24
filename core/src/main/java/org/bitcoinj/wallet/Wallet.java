@@ -5285,9 +5285,17 @@ public class Wallet extends BaseTaggableObject
                 Transaction tx = entry.getValue();
                 boolean canBeDeleted = true;
                 for (TransactionOutput output : tx.getOutputs()) {
-                    if (output.isAvailableForSpending()) {
+                    if (output.isAvailableForSpending() && output.isMineOrWatched(this)) {
                         canBeDeleted = false;
                         break;
+                    }
+                }
+                if (canBeDeleted) {
+                    for (TransactionInput input: tx.getInputs()) {
+                        if (input.getOutpoint() != null && !toCheck.containsKey(input.getOutpoint().getHash())) {
+                            canBeDeleted = false;
+                            break;
+                        }
                     }
                 }
                 if (canBeDeleted && tx.getUpdateTime() != null) {
