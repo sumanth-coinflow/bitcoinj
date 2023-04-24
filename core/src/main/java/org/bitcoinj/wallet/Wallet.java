@@ -5263,7 +5263,10 @@ public class Wallet extends BaseTaggableObject
                 }
                 if (canBeDeleted) {
                     for (TransactionInput input: tx.getInputs()) {
-                        if (input.getOutpoint() != null && !toCheck.containsKey(input.getOutpoint().getHash()) && isInputMine(input)) {
+                        TransactionOutput connectedOutput = input.getConnectedOutput();
+                        if (!toCheck.containsKey(input.getOutpoint().getHash()) ||
+                                (connectedOutput != null && !connectedOutput.isMineOrWatched(this)) ||
+                                isInputMine(input)) {
                             canBeDeleted = false;
                             break;
                         }
