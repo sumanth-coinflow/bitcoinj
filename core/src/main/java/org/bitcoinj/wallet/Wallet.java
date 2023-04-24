@@ -52,7 +52,6 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.*;
 import java.util.concurrent.locks.*;
-import java.util.stream.Stream;
 
 import static com.google.common.base.Preconditions.*;
 
@@ -5263,10 +5262,7 @@ public class Wallet extends BaseTaggableObject
                 }
                 if (canBeDeleted) {
                     for (TransactionInput input: tx.getInputs()) {
-                        TransactionOutput connectedOutput = input.getConnectedOutput();
-                        if (!toCheck.containsKey(input.getOutpoint().getHash()) ||
-                                (connectedOutput != null && !connectedOutput.isMineOrWatched(this)) ||
-                                isInputMine(input)) {
+                        if (unspent.containsKey(input.getOutpoint().getHash())) {
                             canBeDeleted = false;
                             break;
                         }
