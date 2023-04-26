@@ -5282,7 +5282,7 @@ public class Wallet extends BaseTaggableObject
                             break;
                         }
                     }
-                    if (canBeDeleted) {
+                    if (!canBeDeleted) {
                         txCanBeDeleted.remove(entry.getKey());
                     }
                 }
