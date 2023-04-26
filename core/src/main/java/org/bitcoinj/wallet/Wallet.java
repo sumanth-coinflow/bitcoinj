@@ -5265,16 +5265,16 @@ public class Wallet extends BaseTaggableObject
                         if (unspent.containsKey(input.getOutpoint().getHash())) {
                             canBeDeleted = false;
                             break;
+                        } else if (toCheck.containsKey(input.getOutpoint().getHash())) {
+                            Transaction inputTx = toCheck.get(input.getOutpoint().getHash());
+                            if (isTimeInRange(inputTx, days)) {
+                                canBeDeleted = false;
+                                break;
+                            }
                         }
                     }
                 }
-                if (canBeDeleted && tx.getUpdateTime() != null) {
-                    long txTime = tx.getUpdateTime().getTime() / 1000;
-                    long currentTime = new Date().getTime() / 1000;
-                    if (currentTime - txTime < (long) days * 24 * 60 * 60) {
-                        canBeDeleted = false;
-                    }
-                } else {
+                if (canBeDeleted && isTimeInRange(tx, days)) {
                     canBeDeleted = false;
                 }
                 if (canBeDeleted) {
@@ -5287,6 +5287,15 @@ public class Wallet extends BaseTaggableObject
         } finally {
             lock.unlock();
         }
+    }
+
+    private boolean isTimeInRange(Transaction tx, int days) {
+        if (tx.getUpdateTime() != null) {
+            long txTime = tx.getUpdateTime().getTime() / 1000;
+            long currentTime = new Date().getTime() / 1000;
+            return currentTime - txTime < (long) days * 24 * 60 * 60;
+        }
+        return true;
     }
 
     private boolean isInputMine(TransactionInput input) {
