@@ -5251,37 +5251,51 @@ public class Wallet extends BaseTaggableObject
         try {
             Map<Sha256Hash, Transaction> toCheck = new HashMap<>(spent);
             Map<Sha256Hash, Transaction> removed = new HashMap<>();
-            for (Map.Entry<Sha256Hash, Transaction> entry : toCheck.entrySet()) {
-                Transaction tx = entry.getValue();
-                boolean canBeDeleted = true;
-                for (TransactionOutput output : tx.getOutputs()) {
-                    if (output.isAvailableForSpending() && output.isMineOrWatched(this)) {
-                        canBeDeleted = false;
-                        break;
-                    }
-                }
-                if (canBeDeleted) {
-                    for (TransactionInput input: tx.getInputs()) {
-                        if (unspent.containsKey(input.getOutpoint().getHash()) && isInputMine(input)) {
+            Map<Sha256Hash, Transaction> txCanBeDeleted = new HashMap<>();
+            while (true) {
+                for (Map.Entry<Sha256Hash, Transaction> entry : toCheck.entrySet()) {
+                    Transaction tx = entry.getValue();
+                    boolean canBeDeleted = true;
+                    for (TransactionOutput output : tx.getOutputs()) {
+                        if (myUnspents.contains(output)) {
                             canBeDeleted = false;
                             break;
-                        } else if (toCheck.containsKey(input.getOutpoint().getHash())) {
-                            Transaction inputTx = toCheck.get(input.getOutpoint().getHash());
-                            if (isTimeInRange(inputTx, days)) {
-                                canBeDeleted = false;
-                                break;
-                            }
+                        } else if (output.isAvailableForSpending() && output.isMineOrWatched(this)) {
+                            canBeDeleted = false;
+                            break;
                         }
                     }
+                    if (canBeDeleted && isTimeInRange(tx, days)) {
+                        canBeDeleted = false;
+                    }
+                    if (canBeDeleted) {
+                        txCanBeDeleted.put(entry.getKey(), tx);
+                    }
                 }
-                if (canBeDeleted && isTimeInRange(tx, days)) {
-                    canBeDeleted = false;
+                Map<Sha256Hash, Transaction> subTxCanBeDeleted = new HashMap<>(txCanBeDeleted);
+                for (Map.Entry<Sha256Hash, Transaction> entry : subTxCanBeDeleted.entrySet()) {
+                    Transaction tx = entry.getValue();
+                    boolean canBeDeleted = true;
+                    for (TransactionInput input : tx.getInputs()) {
+                        if (unspent.containsKey(input.getOutpoint().getHash())) {
+                            canBeDeleted = false;
+                            break;
+                        }
+                    }
+                    if (canBeDeleted) {
+                        txCanBeDeleted.remove(entry.getKey());
+                    }
                 }
-                if (canBeDeleted) {
-                    transactions.remove(entry.getKey());
-                    spent.remove(entry.getKey());
-                    removed.put(entry.getKey(), tx);
+                if (subTxCanBeDeleted.size() == txCanBeDeleted.size()) {
+                    break;
                 }
+                toCheck = txCanBeDeleted;
+            }
+
+            for (Map.Entry<Sha256Hash, Transaction> entry : txCanBeDeleted.entrySet()) {
+                transactions.remove(entry.getKey());
+                spent.remove(entry.getKey());
+                removed.put(entry.getKey(), entry.getValue());
             }
             return removed;
         } finally {
