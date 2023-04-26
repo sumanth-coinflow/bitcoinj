@@ -5265,7 +5265,7 @@ public class Wallet extends BaseTaggableObject
                         if (unspent.containsKey(input.getOutpoint().getHash())) {
                             canBeDeleted = false;
                             break;
-                        } else if (toCheck.containsKey(input.getOutpoint().getHash())) {
+                        } else if (toCheck.containsKey(input.getOutpoint().getHash()) && isInputMine(input)) {
                             Transaction inputTx = toCheck.get(input.getOutpoint().getHash());
                             if (isTimeInRange(inputTx, days)) {
                                 canBeDeleted = false;
