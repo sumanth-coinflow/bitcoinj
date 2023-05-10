@@ -130,7 +130,7 @@ public class Peer extends PeerSocketHandler {
     // to keep it pinned to the root set if they care about this data.
     @SuppressWarnings("MismatchedQueryAndUpdateOfCollection")
     private final HashSet<TransactionConfidence> pendingTxDownloads = new HashSet<>();
-    private static final int PENDING_TX_DOWNLOADS_LIMIT = 40000;
+    private static final int PENDING_TX_DOWNLOADS_LIMIT = 300000;
     // The lowest version number we're willing to accept. Lower than this will result in an immediate disconnect.
     private volatile int vMinProtocolVersion;
     // When an API user explicitly requests a block or transaction from a peer, the InventoryItem is put here
