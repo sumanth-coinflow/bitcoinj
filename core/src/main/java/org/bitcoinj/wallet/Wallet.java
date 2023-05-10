@@ -5276,6 +5276,127 @@ public class Wallet extends BaseTaggableObject
         }
     }
 
+    public Map<Sha256Hash, Transaction> cleanUpRelevantSpentTxs(int days) {
+        lock.lock();
+        try {
+            Map<Sha256Hash, Transaction> toCheck = new HashMap<>(spent);
+            Map<Sha256Hash, Transaction> removed = new HashMap<>();
+            Map<Sha256Hash, Transaction> txCanBeDeleted = new HashMap<>();
+            while (true) {
+                for (Map.Entry<Sha256Hash, Transaction> entry : toCheck.entrySet()) {
+                    Transaction tx = entry.getValue();
+                    boolean canBeDeleted = true;
+                    for (TransactionOutput output : tx.getOutputs()) {
+                        if (myUnspents.contains(output)) {
+                            canBeDeleted = false;
+                            break;
+                        } else if (output.isAvailableForSpending() && output.isMineOrWatched(this)) {
+                            canBeDeleted = false;
+                            break;
+                        }
+                    }
+                    if (canBeDeleted && isTimeInRange(tx, days)) {
+                        canBeDeleted = false;
+                    }
+                    if (canBeDeleted) {
+                        txCanBeDeleted.put(entry.getKey(), tx);
+                    }
+                }
+                Map<Sha256Hash, Transaction> subTxCanBeDeleted = new HashMap<>(txCanBeDeleted);
+                for (Map.Entry<Sha256Hash, Transaction> entry : subTxCanBeDeleted.entrySet()) {
+                    Transaction tx = entry.getValue();
+                    boolean canBeDeleted = true;
+                    for (TransactionInput input : tx.getInputs()) {
+                        if (unspent.containsKey(input.getOutpoint().getHash()) ||
+                                (!txCanBeDeleted.containsKey(input.getOutpoint().getHash()) && spent.containsKey(input.getOutpoint().getHash())) ||
+                                (spent.containsKey(input.getOutpoint().getHash()) && spent.get(input.getOutpoint().getHash()).getConfidence().getDepthInBlocks() < 6)) {
+                            canBeDeleted = false;
+                            break;
+                        }
+                    }
+                    if (!canBeDeleted) {
+                        txCanBeDeleted.remove(entry.getKey());
+                    }
+                }
+                if (subTxCanBeDeleted.size() == txCanBeDeleted.size()) {
+                    break;
+                }
+                toCheck = txCanBeDeleted;
+            }
+
+            for (Map.Entry<Sha256Hash, Transaction> entry : txCanBeDeleted.entrySet()) {
+                transactions.remove(entry.getKey());
+                spent.remove(entry.getKey());
+                removed.put(entry.getKey(), entry.getValue());
+            }
+            return removed;
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    private boolean isTimeInRange(Transaction tx, int days) {
+        if (tx.getUpdateTime() != null) {
+            long txTime = tx.getUpdateTime().getTime() / 1000;
+            long currentTime = new Date().getTime() / 1000;
+            return currentTime - txTime < (long) days * 24 * 60 * 60;
+        }
+        return true;
+    }
+
+    public Map<Sha256Hash, Transaction> cleanUpRelevantDeadTxs(int days) {
+        lock.lock();
+        try {
+            Map<Sha256Hash, Transaction> toCheck = new HashMap<>(dead);
+            Map<Sha256Hash, Transaction> removed = new HashMap<>();
+            for (Map.Entry<Sha256Hash, Transaction> entry : toCheck.entrySet()) {
+                Transaction tx = entry.getValue();
+                boolean canBeDeleted = true;
+                if (tx.getUpdateTime() != null) {
+                    long txTime = tx.getUpdateTime().getTime() / 1000;
+                    long currentTime = new Date().getTime() / 1000;
+                    if (currentTime - txTime < (long) days * 24 * 60 * 60) {
+                        canBeDeleted = false;
+                    }
+                } else {
+                    canBeDeleted = false;
+                }
+                if (canBeDeleted) {
+                    transactions.remove(entry.getKey());
+                    dead.remove(entry.getKey());
+                    removed.put(entry.getKey(), tx);
+                }
+            }
+            return removed;
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    public void addSpentTxs(Map<Sha256Hash, Transaction> txs) {
+        lock.lock();
+        try {
+            for (Map.Entry<Sha256Hash, Transaction> entry : txs.entrySet()) {
+                spent.put(entry.getKey(), entry.getValue());
+                transactions.put(entry.getKey(), entry.getValue());
+            }
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    public void addDeadTxs(Map<Sha256Hash, Transaction> txs) {
+        lock.lock();
+        try {
+            for (Map.Entry<Sha256Hash, Transaction> entry : txs.entrySet()) {
+                dead.put(entry.getKey(), entry.getValue());
+                transactions.put(entry.getKey(), entry.getValue());
+            }
+        } finally {
+            lock.unlock();
+        }
+    }
+
     /**
      * <p>
      * When a key rotation time is set, any money controlled by keys created before the given timestamp T will be
