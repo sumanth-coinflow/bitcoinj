@@ -5276,7 +5276,7 @@ public class Wallet extends BaseTaggableObject
         }
     }
 
-    public Map<Sha256Hash, Transaction> cleanUpRelevantSpentTxs(int days) {
+    public Map<Sha256Hash, Transaction> cleanUpRelevantSpentTxs(Instant before) {
         lock.lock();
         try {
             Map<Sha256Hash, Transaction> toCheck = new HashMap<>(spent);
@@ -5295,7 +5295,7 @@ public class Wallet extends BaseTaggableObject
                             break;
                         }
                     }
-                    if (canBeDeleted && isTimeInRange(tx, days)) {
+                    if (canBeDeleted && isTimeInRange(tx, before)) {
                         canBeDeleted = false;
                     }
                     if (canBeDeleted) {
@@ -5335,16 +5335,15 @@ public class Wallet extends BaseTaggableObject
         }
     }
 
-    private boolean isTimeInRange(Transaction tx, int days) {
+    private boolean isTimeInRange(Transaction tx, Instant before) {
         if (tx.getUpdateTime() != null) {
-            long txTime = tx.getUpdateTime().getTime() / 1000;
-            long currentTime = new Date().getTime() / 1000;
-            return currentTime - txTime < (long) days * 24 * 60 * 60;
+            Instant txInstant = tx.getUpdateTime().toInstant();
+            return txInstant.isAfter(before);
         }
         return true;
     }
 
-    public Map<Sha256Hash, Transaction> cleanUpRelevantDeadTxs(int days) {
+    public Map<Sha256Hash, Transaction> cleanUpRelevantDeadTxs(Instant before) {
         lock.lock();
         try {
             Map<Sha256Hash, Transaction> toCheck = new HashMap<>(dead);
@@ -5353,9 +5352,8 @@ public class Wallet extends BaseTaggableObject
                 Transaction tx = entry.getValue();
                 boolean canBeDeleted = true;
                 if (tx.getUpdateTime() != null) {
-                    long txTime = tx.getUpdateTime().getTime() / 1000;
-                    long currentTime = new Date().getTime() / 1000;
-                    if (currentTime - txTime < (long) days * 24 * 60 * 60) {
+                    Instant txInstant = tx.getUpdateTime().toInstant();
+                    if (txInstant.isAfter(before)) {
                         canBeDeleted = false;
                     }
                 } else {
