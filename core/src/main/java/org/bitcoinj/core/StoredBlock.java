@@ -18,7 +18,7 @@ package org.bitcoinj.core;
 
 import org.bitcoinj.store.BlockStore;
 import org.bitcoinj.store.BlockStoreException;
-import org.bitcoinj.store.ByteUtils;
+import org.bitcoinj.utils.ByteUtils;
 
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
