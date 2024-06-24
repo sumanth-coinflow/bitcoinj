@@ -1,31 +1,19 @@
-/*
- * Copyright by the original author or authors.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *    http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 package org.bitcoinj.utils;
 
-import java.util.function.Supplier;
-
 public class Preconditions {
+
     /**
      * Ensures the truth of an expression involving one or more parameters to the calling method.
      * @param expression a boolean expression
      * @throws IllegalArgumentException if {@code expression} is false
      */
     public static void checkArgument(boolean expression) {
-        check(expression, IllegalArgumentException::new);
+        check(expression, new Supplier<IllegalArgumentException>() {
+            @Override
+            public IllegalArgumentException get() {
+                return new IllegalArgumentException();
+            }
+        });
     }
 
     /**
@@ -34,8 +22,13 @@ public class Preconditions {
      * @param messageSupplier supplier of the detail message to be used in the event that a IllegalArgumentException is thrown
      * @throws IllegalArgumentException if {@code expression} is false
      */
-    public static void checkArgument(boolean expression, Supplier<String> messageSupplier) {
-        check(expression, () -> new IllegalArgumentException(messageSupplier.get()));
+    public static void checkArgument(boolean expression, final Supplier<String> messageSupplier) {
+        check(expression, new Supplier<IllegalArgumentException>() {
+            @Override
+            public IllegalArgumentException get() {
+                return new IllegalArgumentException(messageSupplier.get());
+            }
+        });
     }
 
     /**
@@ -45,7 +38,12 @@ public class Preconditions {
      * @throws IllegalStateException if {@code expression} is false
      */
     public static void checkState(boolean expression) {
-        check(expression, IllegalStateException::new);
+        check(expression, new Supplier<IllegalStateException>() {
+            @Override
+            public IllegalStateException get() {
+                return new IllegalStateException();
+            }
+        });
     }
 
     /**
@@ -55,8 +53,13 @@ public class Preconditions {
      * @param messageSupplier supplier of the detail message to be used in the event that a IllegalStateException is thrown
      * @throws IllegalStateException if {@code expression} is false
      */
-    public static void checkState(boolean expression, Supplier<String> messageSupplier) {
-        check(expression, () -> new IllegalStateException(messageSupplier.get()));
+    public static void checkState(boolean expression, final Supplier<String> messageSupplier) {
+        check(expression, new Supplier<IllegalStateException>() {
+            @Override
+            public IllegalStateException get() {
+                return new IllegalStateException(messageSupplier.get());
+            }
+        });
     }
 
     /**
@@ -66,7 +69,13 @@ public class Preconditions {
      * @throws X if {@code expression} is false
      */
     public static <X extends Throwable> void check(boolean expression, Supplier<? extends X> exceptionSupplier) throws X {
-        if (!expression)
+        if (!expression) {
             throw exceptionSupplier.get();
+        }
+    }
+
+    // Custom Supplier interface to be compatible with Java 1.7
+    public interface Supplier<T> {
+        T get();
     }
 }
